@@ -1,83 +1,99 @@
-
-const { check, validationResult } = require('express-validator');
 const Product = require('../models/productModel');
+const Category = require('../models/categoryModel');
+const { productValidation } = require('../validation/productValidation');
 
-// GET - Récupérer tous les produits
-const getProducts = async (req, res) => {
-    try {
-        const products = await Product.find();
-        res.json(products);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
+// Créer un produit (seulement pour les administrateurs)
+exports.createProduct = async (req, res) => {
+    // Valider les données du produit
+    const { error } = productValidation(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
 
-// POST - Ajouter un nouveau produit
-const createProduct = async (req, res) => {
-    const { name, price, description, quantity } = req.body;
-
-    if (!name || !price || !description || !quantity) {
-        return res.status(400).json({ message: 'Tous les champs sont requis' });
-    }
-
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+    const { name, description, available, rentalPrice, category } = req.body;
 
     try {
+        const categoryExists = await Category.findById(category);
+        if (!categoryExists) {
+            return res.status(400).json({ message: 'Catégorie non valide' });
+        }
+
         const product = new Product({
             name,
-            price,
             description,
-            quantity
+            available,
+            rentalPrice,
+            category
         });
 
-        const newProduct = await product.save();
-        res.status(201).json(newProduct);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
+        await product.save();
+        res.status(201).json({ message: 'Produit créé avec succès', product });
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
     }
 };
 
-// PUT - Modifier un produit existant
-const updateProduct = async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
+// Obtenir tous les produits
+exports.getAllProducts = async (req, res) => {
     try {
-        const updatedProduct = await Product.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true, runValidators: true } // Validation et récupération des données mises à jour
-        );
-        if (!updatedProduct) {
-            return res.status(404).json({ message: 'Produit non trouvé' });
-        }
-        res.json(updatedProduct);
-    } catch (error) {
-        res.status(400).json({ message: 'Erreur lors de la mise à jour du produit : ' + error.message });
+        const products = await Product.find().populate('category', 'name');
+        res.status(200).json(products);
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
     }
 };
 
-// DELETE - Supprimer un produit
-const deleteProduct = async (req, res) => {
+// Obtenir un produit par ID
+exports.getProductById = async (req, res) => {
+    const { id } = req.params;
+
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
+        const product = await Product.findById(id).populate('category', 'name');
         if (!product) {
             return res.status(404).json({ message: 'Produit non trouvé' });
         }
-        res.json({ message: 'Produit supprimé' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(200).json(product);
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
     }
 };
 
-module.exports = {
-    getProducts,
-    createProduct,
-    updateProduct,
-    deleteProduct,
+// Mettre à jour un produit (seulement pour les administrateurs)
+exports.updateProduct = async (req, res) => {
+    // Valider les données du produit
+    const { error } = productValidation(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
+
+    const { id } = req.params;
+    const { name, description, available, rentalPrice, category } = req.body;
+
+    try {
+        const product = await Product.findByIdAndUpdate(id, {
+            name,
+            description,
+            available,
+            rentalPrice,
+            category
+        }, { new: true });
+
+        if (!product) {
+            return res.status(404).json({ message: 'Produit non trouvé' });
+        }
+        res.status(200).json({ message: 'Produit mis à jour avec succès', product });
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
+    }
+};
+
+// Supprimer un produit (seulement pour les administrateurs)
+exports.deleteProduct = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const product = await Product.findByIdAndDelete(id);
+        if (!product) {
+            return res.status(404).json({ message: 'Produit non trouvé' });
+        }
+        res.status(200).json({ message: 'Produit supprimé avec succès' });
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
+    }
 };
