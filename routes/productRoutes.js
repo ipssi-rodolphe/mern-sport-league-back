@@ -1,30 +1,22 @@
 const express = require('express');
-const { check } = require('express-validator');
-const router = express.Router();
 const {
     createProduct,
-    getProducts,
+    getAllProducts,
+    getProductById,
     updateProduct,
     deleteProduct
 } = require('../controllers/productController');
+const { protect, admin } = require('../middlewares/authMiddleware');
 
+const router = express.Router();
 
+// Routes accessibles à tous les utilisateurs authentifiés
+router.get('/', protect, getAllProducts);
+router.get('/:id', protect, getProductById);
 
-// Route pour obtenir tous les produits
-router.get('/products', getProducts);
-
-// Route pour ajouter un nouveau produit
-router.post('/products', [
-    check('price').isFloat({ gt: 0 }).withMessage('Le prix doit être un nombre positif'),
-], createProduct);
-
-// Route pour mettre à jour un produit
-router.put('/products/:id', updateProduct, [
-    check('price').optional().isFloat({ gt: 0 }).withMessage('Le prix doit être un nombre positif'),
-    check('quantity').optional().isInt({ min: 0 }).withMessage('La quantité doit être un entier positif')
-]);
-
-// Route pour supprimer un produit
-router.delete('/products/:id', deleteProduct);
+// Routes accessibles uniquement aux administrateurs
+router.post('/', protect, admin, createProduct);
+router.put('/:id', protect, admin, updateProduct);
+router.delete('/:id', protect, admin, deleteProduct);
 
 module.exports = router;

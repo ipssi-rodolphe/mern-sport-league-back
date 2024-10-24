@@ -30,9 +30,7 @@ mongoose.connect(process.env.MONGO_URI)
 // Utilisation des routes produits
 app.use('/api/auth', authRoutes);
 app.use('/api/categories', categoryRoutes);
-
-
-app.use('/api', productRoutes);
+app.use('/api/products', productRoutes);
 
 
 // Démarrage du serveur sur le port spécifié
