@@ -33,8 +33,40 @@ exports.createProduct = async (req, res) => {
 
 // Obtenir tous les produits
 exports.getAllProducts = async (req, res) => {
+    const { name, available, rentalPriceMin, rentalPriceMax, category } = req.query;
+
     try {
-        const products = await Product.find().populate('category', 'name');
+        // Créer un objet de filtre
+        let filter = {};
+
+        // Filtrer par nom (insensible à la casse)
+        if (name) {
+            filter.name = { $regex: new RegExp(name, 'i') }; // recherche partielle, insensible à la casse
+        }
+
+        // Filtrer par disponibilité (vrai ou faux)
+        if (available !== undefined) {
+            filter.available = available === 'true'; // Convertir la chaîne en booléen
+        }
+
+        // Filtrer par fourchette de prix de location
+        if (rentalPriceMin !== undefined || rentalPriceMax !== undefined) {
+            filter.rentalPrice = {};
+            if (rentalPriceMin !== undefined) {
+                filter.rentalPrice.$gte = Number(rentalPriceMin); // prix supérieur ou égal
+            }
+            if (rentalPriceMax !== undefined) {
+                filter.rentalPrice.$lte = Number(rentalPriceMax); // prix inférieur ou égal
+            }
+        }
+
+        // Filtrer par catégorie
+        if (category) {
+            filter.category = category; // Assurez-vous que c'est un ID de catégorie valide
+        }
+
+        // Récupérer les produits filtrés
+        const products = await Product.find(filter).populate('category', 'name');
         res.status(200).json(products);
     } catch (err) {
         res.status(500).json({ message: 'Erreur de serveur', error: err.message });
