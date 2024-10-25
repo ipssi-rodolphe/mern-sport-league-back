@@ -23,6 +23,9 @@ const productSchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
+    imageUrl: {
+        type: String
+    },
     createdAt: {
         type: Date,
         default: Date.now
