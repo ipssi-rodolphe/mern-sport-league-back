@@ -109,3 +109,32 @@ exports.refreshToken = async (req, res) => {
         return res.status(403).json({ message: 'Token non valide', error: err.message });
     }
 };
+
+// Obtenir la liste de tous les utilisateurs (super admin seulement)
+exports.getAllUsers = async (req, res) => {
+    try {
+        const users = await User.find().select('-password'); // Ne pas inclure les mots de passe dans la réponse
+        res.status(200).json(users);
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
+    }
+};
+
+// Activer ou désactiver un compte utilisateur (admin ou super admin)
+exports.toggleUserAccount = async (req, res) => {
+    const { id } = req.params;
+    const { accountAccepted } = req.body;  // true pour activer, false pour désactiver
+
+    try {
+        const user = await User.findByIdAndUpdate(id, { accountAccepted }, { new: true });
+
+        if (!user) {
+            return res.status(404).json({ message: 'Utilisateur non trouvé' });
+        }
+
+        const status = accountAccepted ? 'activé' : 'désactivé';
+        res.status(200).json({ message: `Compte utilisateur ${status}`, user });
+    } catch (err) {
+        res.status(500).json({ message: 'Erreur de serveur', error: err.message });
+    }
+};
